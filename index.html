@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Work Hours</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#181b22; --card2:#1f232c; --line:#2a2f3a;
+    --text:#e8eaf0; --dim:#8b93a3; --accent:#4ade80; --accent-dim:#173524;
+    --danger:#f87171; --radius:16px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; padding:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding:12px 14px calc(24px + env(safe-area-inset-bottom));
+    max-width:480px; margin:0 auto;
+  }
+  header{display:flex; justify-content:space-between; align-items:baseline; padding:6px 2px 12px}
+  header h1{font-size:20px; margin:0; letter-spacing:.3px}
+  .weekTotal{text-align:right}
+  .weekTotal span{font-size:22px; font-weight:700; color:var(--accent)}
+  .weekTotal small{display:block; color:var(--dim); font-size:11px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:12px}
+  .card.working{border-color:var(--accent)}
+  .status{color:var(--dim); font-size:14px; margin-bottom:2px}
+  .card.working .status{color:var(--accent); font-weight:600}
+  .elapsed{font-size:40px; font-weight:700; font-variant-numeric:tabular-nums; margin:2px 0 10px}
+  .hidden{display:none !important}
+  .chipsRow{display:flex; align-items:flex-start; gap:8px; margin:10px 0 14px}
+  .chips{display:flex; flex-wrap:wrap; gap:8px; flex:1}
+  .chip{
+    background:var(--card2); color:var(--text); border:1px solid var(--line);
+    border-radius:999px; padding:8px 14px; font-size:14px; cursor:pointer;
+  }
+  .chip.sel{background:var(--accent-dim); border-color:var(--accent); color:var(--accent); font-weight:600}
+  .chip.add{color:var(--dim); border-style:dashed}
+  .chip.del{border-color:var(--danger); color:var(--danger)}
+  .mini{background:none; border:none; color:var(--dim); font-size:12px; padding:8px 4px; cursor:pointer}
+  button.big{
+    width:100%; padding:18px; font-size:18px; font-weight:700; border:none;
+    border-radius:14px; background:var(--accent); color:#06220f; cursor:pointer;
+  }
+  button.big.out{background:var(--danger); color:#2b0808}
+  .row{display:flex; gap:10px; margin-bottom:18px}
+  .secondary{
+    flex:1; padding:13px; font-size:15px; border-radius:12px; cursor:pointer;
+    background:var(--card); color:var(--text); border:1px solid var(--line);
+  }
+  h2{font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin:20px 2px 10px}
+  h2 span{text-transform:none; letter-spacing:0; font-weight:400}
+  .catTotal{margin-bottom:8px}
+  .catTotal .lbl{display:flex; justify-content:space-between; font-size:14px; margin-bottom:4px}
+  .catTotal .lbl b{font-weight:600}
+  .bar{height:6px; background:var(--card2); border-radius:3px; overflow:hidden}
+  .bar i{display:block; height:100%; background:var(--accent); border-radius:3px}
+  .dayHead{display:flex; justify-content:space-between; font-size:13px; color:var(--dim); margin:14px 2px 6px; font-weight:600}
+  .entry{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; margin-bottom:6px; cursor:pointer; font-size:15px;
+  }
+  .entry .times{font-variant-numeric:tabular-nums}
+  .entry .cat{color:var(--dim); font-size:13px; flex:1; text-align:left; margin-left:10px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .entry .dur{font-weight:600; color:var(--accent); font-variant-numeric:tabular-nums}
+  .empty{color:var(--dim); font-size:14px; padding:8px 2px}
+  details.week{background:var(--card); border:1px solid var(--line); border-radius:12px; margin-bottom:8px}
+  details.week summary{
+    display:flex; justify-content:space-between; padding:13px 14px; font-size:14px;
+    cursor:pointer; list-style:none;
+  }
+  details.week summary::-webkit-details-marker{display:none}
+  details.week summary b{color:var(--accent); font-weight:600}
+  details.week .wkCats{padding:0 14px 12px; font-size:13px; color:var(--dim)}
+  details.week .wkCats div{display:flex; justify-content:space-between; padding:3px 0}
+  dialog{
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--card);
+    color:var(--text); padding:20px; width:min(92vw,380px); margin:auto;
+  }
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  dialog h3{margin:0 0 14px; font-size:17px}
+  dialog label{display:block; font-size:13px; color:var(--dim); margin-bottom:12px}
+  dialog input,dialog select{
+    display:block; width:100%; margin-top:5px; padding:12px; font-size:16px;
+    background:var(--card2); color:var(--text); border:1px solid var(--line); border-radius:10px;
+    color-scheme:dark;
+  }
+  .two{display:flex; gap:10px}
+  .two label{flex:1}
+  .note{font-size:12px; color:var(--accent); margin:-6px 0 10px}
+  .btns{display:flex; gap:10px; margin-top:6px}
+  .btns button{padding:12px 14px; border-radius:10px; font-size:15px; border:1px solid var(--line);
+    background:var(--card2); color:var(--text); cursor:pointer}
+  .btns .primary{flex:1; background:var(--accent); color:#06220f; border:none; font-weight:700}
+  .btns .danger{background:none; border-color:var(--danger); color:var(--danger)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Work Hours</h1>
+  <div class="weekTotal"><span id="weekTotal">0h 00m</span><small>this week</small></div>
+</header>
+
+<section class="card" id="clockCard">
+  <div id="status" class="status">Not clocked in</div>
+  <div id="elapsed" class="elapsed hidden">0:00:00</div>
+  <div class="chipsRow">
+    <div id="chips" class="chips"></div>
+    <button id="editCats" class="mini">Edit</button>
+  </div>
+  <button id="clockBtn" class="big">Clock in</button>
+</section>
+
+<div class="row">
+  <button id="addBtn" class="secondary">＋ Add block</button>
+  <button id="exportBtn" class="secondary">⬇ Export CSV</button>
+</div>
+
+<h2>This week <span id="weekRange"></span></h2>
+<div id="catTotals"></div>
+<div id="dayList"></div>
+
+<div id="historyWrap">
+  <h2>Past weeks</h2>
+  <div id="history"></div>
+</div>
+
+<dialog id="modal">
+  <form id="entryForm">
+    <h3 id="modalTitle">Add block</h3>
+    <label>Date <input type="date" id="fDate" required></label>
+    <div class="two">
+      <label>Start <input type="time" id="fStart" required></label>
+      <label>End <input type="time" id="fEnd" required></label>
+    </div>
+    <div id="crossNote" class="note hidden">End is before start — this block will end the next day.</div>
+    <label>Category <select id="fCat"></select></label>
+    <div class="btns">
+      <button type="button" id="deleteBtn" class="danger hidden">Delete</button>
+      <button type="button" id="cancelBtn">Cancel</button>
+      <button type="submit" class="primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const MS_H = 3600000, MS_D = 86400000;
+const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
+const store = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+let entries = load('wht_entries', []);      // {id, start, end, cat} (ms timestamps)
+let cats    = load('wht_cats', ['General']);
+let active  = load('wht_active', null);     // {start, cat}
+let selCat  = load('wht_selcat', null);
+if (!cats.includes(selCat)) selCat = cats[0];
+let editCatsMode = false;
+let editingId = null;
+
+function persist() {
+  store('wht_entries', entries);
+  store('wht_cats', cats);
+  store('wht_active', active);
+  store('wht_selcat', selCat);
+}
+
+/* ---- time helpers (week runs Monday 00:00 → Sunday night) ---- */
+function weekStartTs(t) {
+  const d = new Date(t);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.getTime();
+}
+function dayKey(t) {
+  const d = new Date(t);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function fmtHM(ms) {
+  ms = Math.max(0, ms);
+  return Math.floor(ms / MS_H) + 'h ' + String(Math.floor(ms % MS_H / 60000)).padStart(2, '0') + 'm';
+}
+function fmtHMM(ms) {
+  return Math.floor(ms / MS_H) + ':' + String(Math.floor(ms % MS_H / 60000)).padStart(2, '0');
+}
+function fmtClock(ms) {
+  const s = Math.floor(Math.max(0, ms) / 1000);
+  return Math.floor(s / 3600) + ':' + String(Math.floor(s / 60) % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+function fmtTime24(ts) {
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function fmtDay(ts) {
+  return new Date(ts).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+}
+function fmtShort(ts) {
+  return new Date(ts).toLocaleDateString([], { day: 'numeric', month: 'short' });
+}
+const weekdayName = ts => new Date(ts).toLocaleDateString([], { weekday: 'long' });
+
+/* ---- clock in / out ---- */
+$('clockBtn').onclick = () => {
+  if (active) {
+    if (Date.now() - active.start >= 60000) {
+      entries.push({ id: uid(), start: active.start, end: Date.now(), cat: active.cat });
+    }
+    active = null;
+  } else {
+    active = { start: Date.now(), cat: selCat };
+  }
+  persist();
+  renderAll();
+};
+
+/* ---- categories ---- */
+function renderChips() {
+  const box = $('chips');
+  box.innerHTML = '';
+  cats.forEach(cat => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (cat === selCat ? ' sel' : '') + (editCatsMode ? ' del' : '');
+    b.textContent = editCatsMode ? cat + '  ✕' : cat;
+    b.onclick = () => {
+      if (editCatsMode) return removeCat(cat);
+      selCat = cat;
+      if (active) active.cat = cat;
+      persist();
+      renderChips();
+      renderStatus();
+    };
+    box.appendChild(b);
+  });
+  if (!editCatsMode) {
+    const add = document.createElement('button');
+    add.className = 'chip add';
+    add.textContent = '＋ New';
+    add.onclick = () => {
+      const n = (prompt('New category name:') || '').trim();
+      if (!n) return;
+      if (!cats.includes(n)) cats.push(n);
+      selCat = n;
+      if (active) active.cat = n;
+      persist();
+      renderChips();
+      renderStatus();
+    };
+    box.appendChild(add);
+  }
+}
+function removeCat(cat) {
+  if (cats.length <= 1) { alert('Keep at least one category.'); return; }
+  if (!confirm('Remove category "' + cat + '"?\nExisting recorded blocks keep it.')) return;
+  cats = cats.filter(c => c !== cat);
+  if (selCat === cat) selCat = cats[0];
+  persist();
+  renderChips();
+}
+$('editCats').onclick = () => {
+  editCatsMode = !editCatsMode;
+  $('editCats').textContent = editCatsMode ? 'Done' : 'Edit';
+  renderChips();
+};
+
+/* ---- status + live timer ---- */
+function renderStatus() {
+  const card = $('clockCard'), btn = $('clockBtn');
+  if (active) {
+    card.classList.add('working');
+    $('status').textContent = 'Working — ' + active.cat;
+    $('elapsed').classList.remove('hidden');
+    btn.textContent = 'Clock out';
+    btn.classList.add('out');
+  } else {
+    card.classList.remove('working');
+    $('status').textContent = 'Not clocked in';
+    $('elapsed').classList.add('hidden');
+    btn.textContent = 'Clock in';
+    btn.classList.remove('out');
+  }
+  tick();
+}
+function weekTotalMs() {
+  const wk = weekStartTs(Date.now());
+  let total = entries.reduce((s, e) => weekStartTs(e.start) === wk ? s + (e.end - e.start) : s, 0);
+  if (active) total += Date.now() - active.start;
+  return total;
+}
+function tick() {
+  if (active) $('elapsed').textContent = fmtClock(Date.now() - active.start);
+  $('weekTotal').textContent = fmtHM(weekTotalMs());
+}
+setInterval(tick, 1000);
+
+/* ---- this week ---- */
+function renderWeek() {
+  const wk = weekStartTs(Date.now());
+  $('weekRange').textContent = '· ' + fmtShort(wk) + ' – ' + fmtShort(wk + 6 * MS_D);
+  const wkEntries = entries.filter(e => weekStartTs(e.start) === wk).sort((a, b) => b.start - a.start);
+
+  // per-category totals with bars
+  const byCat = {};
+  wkEntries.forEach(e => byCat[e.cat] = (byCat[e.cat] || 0) + (e.end - e.start));
+  if (active) byCat[active.cat] = (byCat[active.cat] || 0) + (Date.now() - active.start);
+  const catBox = $('catTotals');
+  catBox.innerHTML = '';
+  const max = Math.max(1, ...Object.values(byCat));
+  Object.entries(byCat).sort((a, b) => b[1] - a[1]).forEach(([cat, ms]) => {
+    const div = document.createElement('div');
+    div.className = 'catTotal';
+    div.innerHTML = '<div class="lbl"><span></span><b></b></div><div class="bar"><i></i></div>';
+    div.querySelector('span').textContent = cat;
+    div.querySelector('b').textContent = fmtHM(ms);
+    div.querySelector('i').style.width = Math.round(ms / max * 100) + '%';
+    catBox.appendChild(div);
+  });
+
+  // day-by-day list
+  const list = $('dayList');
+  list.innerHTML = '';
+  if (!wkEntries.length && !active) {
+    list.innerHTML = '<div class="empty">No hours recorded this week yet.</div>';
+    return;
+  }
+  const byDay = {};
+  wkEntries.forEach(e => (byDay[dayKey(e.start)] = byDay[dayKey(e.start)] || []).push(e));
+  Object.keys(byDay).sort().reverse().forEach(day => {
+    const dayEntries = byDay[day];
+    const total = dayEntries.reduce((s, e) => s + (e.end - e.start), 0);
+    const head = document.createElement('div');
+    head.className = 'dayHead';
+    head.innerHTML = '<span></span><span></span>';
+    head.children[0].textContent = fmtDay(dayEntries[0].start);
+    head.children[1].textContent = fmtHM(total);
+    list.appendChild(head);
+    dayEntries.forEach(e => {
+      const row = document.createElement('div');
+      row.className = 'entry';
+      row.innerHTML = '<span class="times"></span><span class="cat"></span><span class="dur"></span>';
+      row.querySelector('.times').textContent =
+        fmtTime24(e.start) + '–' + fmtTime24(e.end) + (dayKey(e.end) !== dayKey(e.start) ? '⁺¹' : '');
+      row.querySelector('.cat').textContent = e.cat;
+      row.querySelector('.dur').textContent = fmtHM(e.end - e.start);
+      row.onclick = () => openModal(e);
+      list.appendChild(row);
+    });
+  });
+}
+
+/* ---- past weeks ---- */
+function renderHistory() {
+  const wk = weekStartTs(Date.now());
+  const byWeek = {};
+  entries.forEach(e => {
+    const w = weekStartTs(e.start);
+    if (w < wk) (byWeek[w] = byWeek[w] || []).push(e);
+  });
+  const weeks = Object.keys(byWeek).map(Number).sort((a, b) => b - a);
+  $('historyWrap').style.display = weeks.length ? '' : 'none';
+  const box = $('history');
+  box.innerHTML = '';
+  weeks.forEach(w => {
+    const es = byWeek[w];
+    const total = es.reduce((s, e) => s + (e.end - e.start), 0);
+    const byCat = {};
+    es.forEach(e => byCat[e.cat] = (byCat[e.cat] || 0) + (e.end - e.start));
+    const det = document.createElement('details');
+    det.className = 'week';
+    det.innerHTML = '<summary><span></span><b></b></summary><div class="wkCats"></div>';
+    det.querySelector('summary span').textContent = fmtShort(w) + ' – ' + fmtShort(w + 6 * MS_D);
+    det.querySelector('summary b').textContent = fmtHM(total);
+    const cbox = det.querySelector('.wkCats');
+    Object.entries(byCat).sort((a, b) => b[1] - a[1]).forEach(([cat, ms]) => {
+      const d = document.createElement('div');
+      d.innerHTML = '<span></span><span></span>';
+      d.children[0].textContent = cat;
+      d.children[1].textContent = fmtHM(ms);
+      cbox.appendChild(d);
+    });
+    box.appendChild(det);
+  });
+}
+
+/* ---- add / edit modal ---- */
+function fillCatSelect(current) {
+  const sel = $('fCat');
+  sel.innerHTML = '';
+  const opts = cats.slice();
+  if (current && !opts.includes(current)) opts.unshift(current);
+  opts.forEach(c => {
+    const o = document.createElement('option');
+    o.value = o.textContent = c;
+    sel.appendChild(o);
+  });
+  const nw = document.createElement('option');
+  nw.value = '__new';
+  nw.textContent = '＋ New category…';
+  sel.appendChild(nw);
+  sel.value = current || selCat;
+}
+$('fCat').onchange = () => {
+  if ($('fCat').value !== '__new') return;
+  const n = (prompt('New category name:') || '').trim();
+  if (n && !cats.includes(n)) { cats.push(n); persist(); }
+  fillCatSelect(n || selCat);
+};
+function updateCrossNote() {
+  const s = $('fStart').value, e = $('fEnd').value;
+  $('crossNote').classList.toggle('hidden', !(s && e && e <= s));
+}
+$('fStart').onchange = $('fEnd').onchange = updateCrossNote;
+
+function openModal(entry) {
+  editingId = entry ? entry.id : null;
+  $('modalTitle').textContent = entry ? 'Edit block' : 'Add block';
+  $('deleteBtn').classList.toggle('hidden', !entry);
+  if (entry) {
+    $('fDate').value = dayKey(entry.start);
+    $('fStart').value = fmtTime24(entry.start);
+    $('fEnd').value = fmtTime24(entry.end);
+    fillCatSelect(entry.cat);
+  } else {
+    $('fDate').value = dayKey(Date.now());
+    $('fStart').value = '';
+    $('fEnd').value = '';
+    fillCatSelect(selCat);
+  }
+  updateCrossNote();
+  $('modal').showModal();
+}
+$('addBtn').onclick = () => openModal(null);
+$('cancelBtn').onclick = () => $('modal').close();
+$('deleteBtn').onclick = () => {
+  if (!confirm('Delete this block?')) return;
+  entries = entries.filter(e => e.id !== editingId);
+  persist();
+  $('modal').close();
+  renderAll();
+};
+$('entryForm').onsubmit = ev => {
+  ev.preventDefault();
+  const d = $('fDate').value;
+  const start = new Date(d + 'T' + $('fStart').value).getTime();
+  let end = new Date(d + 'T' + $('fEnd').value).getTime();
+  if (end <= start) end += MS_D; // block runs past midnight
+  const cat = $('fCat').value === '__new' ? selCat : $('fCat').value;
+  if (editingId) {
+    const e = entries.find(e => e.id === editingId);
+    if (e) { e.start = start; e.end = end; e.cat = cat; }
+  } else {
+    entries.push({ id: uid(), start, end, cat });
+  }
+  persist();
+  $('modal').close();
+  renderAll();
+};
+
+/* ---- CSV export ---- */
+function exportCSV() {
+  const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const line = arr => arr.map(esc).join(',');
+  const hours = ms => (ms / MS_H).toFixed(2);
+  const sorted = entries.slice().sort((a, b) => a.start - b.start);
+  const rows = [];
+
+  rows.push('TIME BLOCKS');
+  rows.push(line(['Date', 'Day', 'Clock in', 'Clock out', 'Duration (h:mm)', 'Hours (decimal)', 'Category', 'Week starting']));
+  sorted.forEach(e => {
+    rows.push(line([
+      dayKey(e.start), weekdayName(e.start), fmtTime24(e.start),
+      fmtTime24(e.end) + (dayKey(e.end) !== dayKey(e.start) ? ' (+1 day)' : ''),
+      fmtHMM(e.end - e.start), hours(e.end - e.start), e.cat, dayKey(weekStartTs(e.start))
+    ]));
+  });
+
+  rows.push('');
+  rows.push('DAILY TOTALS');
+  rows.push(line(['Date', 'Day', 'Category', 'Hours']));
+  const byDay = {};
+  sorted.forEach(e => {
+    const k = dayKey(e.start);
+    byDay[k] = byDay[k] || { ts: e.start, cats: {} };
+    byDay[k].cats[e.cat] = (byDay[k].cats[e.cat] || 0) + (e.end - e.start);
+  });
+  Object.keys(byDay).sort().forEach(k => {
+    const d = byDay[k];
+    let dayTotal = 0;
+    Object.entries(d.cats).forEach(([cat, ms]) => {
+      dayTotal += ms;
+      rows.push(line([k, weekdayName(d.ts), cat, hours(ms)]));
+    });
+    rows.push(line([k, weekdayName(d.ts), 'DAY TOTAL', hours(dayTotal)]));
+  });
+
+  rows.push('');
+  rows.push('WEEKLY TOTALS');
+  rows.push(line(['Week starting (Mon)', 'Week ending (Sun)', 'Category', 'Hours']));
+  const byWeek = {};
+  sorted.forEach(e => {
+    const w = weekStartTs(e.start);
+    byWeek[w] = byWeek[w] || {};
+    byWeek[w][e.cat] = (byWeek[w][e.cat] || 0) + (e.end - e.start);
+  });
+  Object.keys(byWeek).map(Number).sort((a, b) => a - b).forEach(w => {
+    let wkTotal = 0;
+    Object.entries(byWeek[w]).forEach(([cat, ms]) => {
+      wkTotal += ms;
+      rows.push(line([dayKey(w), dayKey(w + 6 * MS_D), cat, hours(ms)]));
+    });
+    rows.push(line([dayKey(w), dayKey(w + 6 * MS_D), 'WEEK TOTAL', hours(wkTotal)]));
+  });
+
+  const blob = new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'work-hours-' + dayKey(Date.now()) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+$('exportBtn').onclick = () => {
+  if (!entries.length) { alert('Nothing to export yet.'); return; }
+  exportCSV();
+};
+
+/* ---- boot ---- */
+function renderAll() {
+  renderChips();
+  renderStatus();
+  renderWeek();
+  renderHistory();
+}
+renderAll();
+
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
